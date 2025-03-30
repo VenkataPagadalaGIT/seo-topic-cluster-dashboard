@@ -151,7 +151,7 @@ def main():
         type=['csv'],
         help="Upload a CSV file containing your keyword data"
     )
-    
+
     if uploaded_file is not None:
         try:
             # Read and process data
@@ -428,57 +428,41 @@ def main():
 
                 # Fixed Volume vs Difficulty Heatmap
                 st.subheader("Volume vs Difficulty Heatmap")
-                
-                # Calculate bin edges for Volume
-                volume_min = df['Volume'].min()
-                volume_max = df['Volume'].max()
-                volume_bins = np.linspace(volume_min, volume_max, 5)
-                volume_labels = ['Very Low', 'Low', 'Medium', 'High']
-                
-                # Calculate bin edges for Keyword Difficulty
-                difficulty_min = df['Keyword Difficulty'].min()
-                difficulty_max = df['Keyword Difficulty'].max()
-                difficulty_bins = np.linspace(difficulty_min, difficulty_max, 5)
-                difficulty_labels = ['Very Easy', 'Easy', 'Medium', 'Hard']
-                
-                # Create bins using pd.cut
-                df['Volume_Bin'] = pd.cut(
-                    df['Volume'],
-                    bins=volume_bins,
-                    labels=volume_labels,
-                    include_lowest=True
-                )
-                df['Difficulty_Bin'] = pd.cut(
-                    df['Keyword Difficulty'],
-                    bins=difficulty_bins,
-                    labels=difficulty_labels,
-                    include_lowest=True
-                )
-                
-                # Create heatmap data
-                heatmap_data = pd.crosstab(df['Volume_Bin'], df['Difficulty_Bin'])
-                
-                # Create heatmap visualization
-                fig_heatmap = px.imshow(
-                    heatmap_data,
-                    title="Keyword Distribution Heatmap",
-                    labels=dict(
-                        x="Keyword Difficulty",
-                        y="Search Volume",
-                        color="Number of Keywords"
-                    ),
-                    aspect="auto",
-                    color_continuous_scale='Viridis'
-                )
-                
-                # Update layout for better readability
-                fig_heatmap.update_layout(
-                    xaxis_title="Keyword Difficulty",
-                    yaxis_title="Search Volume",
-                    height=600
-                )
-                
-                st.plotly_chart(fig_heatmap, use_container_width=True)
+                try:
+                    # Create custom bins with equal frequency
+                    n_bins = 5
+                    volume_percentiles = np.percentile(df['Volume'], np.linspace(0, 100, n_bins + 1))
+                    difficulty_percentiles = np.percentile(df['Keyword Difficulty'], np.linspace(0, 100, n_bins + 1))
+                    
+                    # Ensure unique bin edges
+                    volume_percentiles = np.unique(volume_percentiles)
+                    difficulty_percentiles = np.unique(difficulty_percentiles)
+                    
+                    # Create labels
+                    volume_labels = ['Very Low', 'Low', 'Medium', 'High', 'Very High'][:len(volume_percentiles)-1]
+                    difficulty_labels = ['Very Easy', 'Easy', 'Medium', 'Hard', 'Very Hard'][:len(difficulty_percentiles)-1]
+                    
+                    # Create bins
+                    df['Volume_Bin'] = pd.cut(df['Volume'], 
+                                            bins=volume_percentiles, 
+                                            labels=volume_labels, 
+                                            include_lowest=True)
+                    df['Difficulty_Bin'] = pd.cut(df['Keyword Difficulty'], 
+                                                bins=difficulty_percentiles, 
+                                                labels=difficulty_labels, 
+                                                include_lowest=True)
+                    
+                    # Create heatmap
+                    heatmap_data = pd.crosstab(df['Volume_Bin'], df['Difficulty_Bin'])
+                    fig_heatmap = px.imshow(
+                        heatmap_data,
+                        title="Keyword Distribution Heatmap",
+                        labels=dict(x="Keyword Difficulty", y="Search Volume", color="Number of Keywords"),
+                        aspect="auto"
+                    )
+                    st.plotly_chart(fig_heatmap, use_container_width=True)
+                except Exception as e:
+                    st.warning("Could not create heatmap due to data distribution. Please check your data.")
 
                 # Interactive Top Performing Clusters
                 st.subheader("Interactive Cluster Performance Analysis")
